@@ -1,11 +1,1442 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<title>CloudBeat</title>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudBeat Audio v3</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --bg-2: #02050b;
+      --bg-3: #07111d;
+      --panel: rgba(255,255,255,0.06);
+      --stroke: rgba(255,255,255,0.12);
+      --text: #f6f8ff;
+      --muted: #9fb0c8;
+      --accent: #3aa0ff;
+      --accent-2: #0b5cff;
+      --accent-3: #86d2ff;
+      --shadow: 0 30px 80px rgba(0,0,0,0.48);
+      --glow: 0 0 40px rgba(58,160,255,0.24);
+      --max: 1280px;
+      --radius: 28px;
+      --shell-top: #1a2433;
+      --shell-bottom: #0a1119;
+      --mesh-line: rgba(255,255,255,0.04);
+      --cursor-x: 50vw;
+      --cursor-y: 50vh;
+      --cursor-size: 18px;
+      --cursor-opacity: 0;
+      --hero-video-opacity: 0.22;
 
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 16% 0%, rgba(11,92,255,0.16), transparent 24%),
+        radial-gradient(circle at 84% 10%, rgba(58,160,255,0.12), transparent 22%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 34%, var(--bg-3) 100%);
+      color: var(--text);
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; }
+
+    .bg-grid, .bg-noise, .bg-glow, .bg-vignette, .particle-field, .cursor-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+    .bg-grid, .bg-noise, .bg-glow, .bg-vignette, .particle-field { z-index: -3; }
+    .cursor-layer { z-index: 9999; }
+
+    .cursor-dot, .cursor-ring {
+      position: fixed;
+      left: var(--cursor-x);
+      top: var(--cursor-y);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: var(--cursor-opacity);
+      transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+    .cursor-dot {
+      width: var(--cursor-size);
+      height: var(--cursor-size);
+      border-radius: 50%;
+      background: rgba(134,210,255,0.9);
+      box-shadow: 0 0 24px rgba(58,160,255,0.6);
+    }
+    .cursor-ring {
+      width: calc(var(--cursor-size) * 2.8);
+      height: calc(var(--cursor-size) * 2.8);
+      border-radius: 50%;
+      border: 1px solid rgba(134,210,255,0.35);
+      box-shadow: 0 0 30px rgba(58,160,255,0.18);
+    }
+    body.cursor-hover {
+      --cursor-size: 28px;
+      --cursor-opacity: 1;
+    }
+    body.cursor-active {
+      --cursor-size: 36px;
+    }
+
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.84), transparent 94%);
+    }
+    .bg-noise {
+      opacity: 0.04;
+      background-image:
+        radial-gradient(circle at 20% 24%, white 0.7px, transparent 1px),
+        radial-gradient(circle at 72% 44%, white 0.7px, transparent 1px),
+        radial-gradient(circle at 40% 76%, white 0.7px, transparent 1px);
+      background-size: 120px 120px;
+      animation: drift 18s linear infinite;
+    }
+    .bg-glow::before, .bg-glow::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.42;
+      animation: float 12s ease-in-out infinite;
+    }
+    .bg-glow::before {
+      width: 360px; height: 360px; background: rgba(11,92,255,0.24); top: 2%; left: -3%;
+    }
+    .bg-glow::after {
+      width: 320px; height: 320px; background: rgba(58,160,255,0.2); right: -2%; top: 12%; animation-delay: -5s;
+    }
+    .bg-vignette {
+      background: radial-gradient(circle at center, transparent 42%, rgba(0,0,0,0.38) 100%);
+      z-index: -2;
+    }
+    .particle {
+      position: absolute;
+      width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(134,210,255,0.52);
+      box-shadow: 0 0 12px rgba(58,160,255,0.22);
+      animation: particleFloat var(--dur) linear infinite;
+      animation-delay: var(--delay);
+      opacity: 0.35;
+    }
+
+    .container { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; padding-inline: 0; }
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(22px);
+      background: rgba(0,0,0,0.6);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .nav-inner {
+      display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: 0.02em; }
+    .brand-logo {
+      width: 42px; height: 42px; border-radius: 15px;
+      background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+      box-shadow: var(--glow); position: relative; overflow: hidden;
+    }
+    .brand-logo::after {
+      content: ""; position: absolute; inset: 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.22);
+    }
+    .nav-links { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); align-items: center; justify-content: flex-end; }
+    .nav-links a { transition: color 0.25s ease; }
+    .nav-links a:hover { color: var(--text); }
+
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.02fr 0.98fr;
+      align-items: center;
+      gap: 34px;
+      padding: 78px 0 52px;
+      position: relative;
+      isolation: isolate;
+    }
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      border-radius: 30px;
+      overflow: hidden;
+      z-index: -1;
+      opacity: var(--hero-video-opacity);
+      pointer-events: none;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.65), rgba(0,0,0,0.15));
+    }
+    .hero-video canvas { width: 100%; height: 100%; display: block; }
+
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,0.05);
+      border: 1px solid var(--stroke); color: var(--muted); font-size: 0.92rem;
+      backdrop-filter: blur(12px); margin-bottom: 20px;
+    }
+    .eyebrow-dot {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 18px rgba(58,160,255,0.8);
+    }
+    h1 { margin: 0 0 18px; font-size: clamp(3rem, 8vw, 6.6rem); line-height: 0.92; letter-spacing: -0.055em; }
+    .gradient-text {
+      background: linear-gradient(135deg, #ffffff 8%, #90d8ff 48%, #76a8ff 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lead { margin: 0 0 28px; font-size: 1.08rem; line-height: 1.78; color: var(--muted); max-width: 58ch; }
+
+    img, canvas, video { max-width: 100%; height: auto; display: block; }
+    section { scroll-margin-top: 88px; }
+
+    .actions, .buy-actions, .sound-controls, .config-row, .blog-grid, .review-grid {
+      display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+    }
+    .btn {
+      border: none; cursor: pointer; border-radius: 16px; padding: 14px 20px; font-weight: 700;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #c2eaff); color: #07111b; box-shadow: 0 14px 36px rgba(58,160,255,0.26);
+    }
+    .btn-secondary {
+      color: var(--text); background: rgba(255,255,255,0.06); border: 1px solid var(--stroke); backdrop-filter: blur(12px);
+    }
+
+    .hero-specs { display: flex; gap: 22px; flex-wrap: wrap; color: var(--muted); margin-top: 24px; }
+    .hero-specs strong { display: block; color: var(--text); font-size: 1.26rem; margin-bottom: 4px; }
+    .hero-visual { position: relative; min-height: 680px; display: grid; place-items: center; }
+    .speaker-stage { position: relative; width: min(620px, 100%); aspect-ratio: 1/1; display: grid; place-items: center; perspective: 1600px; }
+    .speaker-glow {
+      position: absolute; width: 78%; aspect-ratio: 1; border-radius: 50%;
+      background: radial-gradient(circle, rgba(58,160,255,0.24), rgba(11,92,255,0.12) 50%, transparent 74%);
+      filter: blur(18px); animation: pulseGlow 4.8s ease-in-out infinite;
+    }
+    .speaker-shadow {
+      position: absolute; width: 64%; height: 64px; bottom: 56px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,0,0,0.56), transparent 72%); filter: blur(12px); transform: translateY(24px);
+    }
+    .speaker-assembly {
+      position: relative; width: 350px; height: 530px; transform-style: preserve-3d;
+      transform: rotate(-10deg) rotateX(10deg); transition: transform 0.2s ease;
+    }
+    .speaker-part {
+      position: absolute; left: 50%; transform: translateX(-50%) translateY(var(--offset, 0px)) scale(var(--scale, 1));
+      box-shadow: var(--shadow); transition: transform 0.2s ease, filter 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+    }
+    .part-topcap, .part-bottomcap {
+      width: 230px; height: 36px; border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0.07));
+      border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(12px);
+    }
+    .part-topcap { top: 16px; }
+    .part-bottomcap { bottom: 16px; }
+
+    .part-shell, .layer-shell, .mini-speaker, .gallery-speaker, .sound-speaker {
+      background: linear-gradient(180deg, var(--shell-top), var(--shell-bottom));
+      border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 40px rgba(0,0,0,0.34); overflow: hidden;
+    }
+    .part-shell {
+      top: 42px; width: 272px; height: 432px; border-radius: 58px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)), linear-gradient(180deg, var(--shell-top), var(--shell-bottom));
+    }
+    .part-shell::before, .layer-shell::before, .mini-speaker::before, .gallery-speaker::before, .sound-speaker::before {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 24%), repeating-linear-gradient(90deg, var(--mesh-line) 0 2px, rgba(255,255,255,0.008) 2px 6px);
+      opacity: 0.92; pointer-events: none;
+    }
+    .part-shell::after, .layer-shell::after, .mini-speaker::after, .gallery-speaker::after {
+      content: ""; position: absolute; inset: 16px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.05); pointer-events: none;
+    }
+    .part-tweeter, .part-driver, .part-radiator, .part-battery, .part-chip,
+    .layer-driver, .layer-radiator, .layer-battery, .layer-chip, .layer-tweeter {
+      display: grid; place-items: center; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.08em; text-align: center;
+    }
+    .part-tweeter, .layer-tweeter {
+      border-radius: 50%; border: 8px solid rgba(255,255,255,0.12); background: radial-gradient(circle, rgba(255,255,255,0.16) 0 16%, #101822 17% 100%);
+    }
+    .part-tweeter { top: 76px; width: 72px; height: 72px; font-size: 0.72rem; }
+    .part-driver, .layer-driver, .part-radiator, .layer-radiator { border-radius: 50%; font-size: 0.76rem; }
+    .part-driver {
+      top: 142px; width: 146px; height: 146px; border: 12px solid rgba(255,255,255,0.14);
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.32), rgba(255,255,255,0.02) 34%), radial-gradient(circle, #182230 0 28%, #0e151f 29% 55%, #1c2938 56% 72%, #0b1118 73% 100%);
+    }
+    .part-chip, .layer-chip {
+      border-radius: 24px; font-size: 0.68rem; background: linear-gradient(135deg, rgba(58,160,255,0.28), rgba(58,160,255,0.08));
+      border: 1px solid rgba(58,160,255,0.24); backdrop-filter: blur(12px);
+    }
+    .part-chip { top: 214px; width: 132px; height: 80px; }
+    .part-battery, .layer-battery {
+      border-radius: 22px; font-size: 0.72rem; background: linear-gradient(135deg, rgba(11,92,255,0.52), rgba(11,92,255,0.16)); border: 1px solid rgba(118,168,255,0.22);
+    }
+    .part-battery { top: 238px; width: 182px; height: 64px; }
+    .part-radiator {
+      top: 314px; width: 122px; height: 122px; border: 10px solid rgba(58,160,255,0.18);
+      background: radial-gradient(circle, rgba(58,160,255,0.22) 0 22%, #0d151f 23% 55%, #1b2633 56% 75%, #0b1118 76% 100%);
+      box-shadow: 0 0 34px rgba(58,160,255,0.16);
+    }
+    .strap {
+      position: absolute; right: 16px; top: 130px; width: 16px; height: 108px; border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)); border: 1px solid rgba(255,255,255,0.08); transform: rotate(-10deg); box-shadow: var(--shadow);
+    }
+
+    .hero-card, .floating-pill, .tooltip {
+      position: absolute; border-radius: 24px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); box-shadow: var(--shadow);
+    }
+    .hero-card { right: 2%; bottom: 4%; width: min(320px, 78%); padding: 18px; }
+    .hero-card h3, .buy-card h3, .gallery-card h3, .testimonial-card h3, .feature-card h3, .spec-card h3, .compare-card h3, .sound-card h3, .blog-card h3, .review-card h3 { margin: 0 0 10px; }
+    .hero-card p, .feature-card p, .spec-card p, .testimonial-card p, .buy-card p, .gallery-card p, .compare-card p, .sound-card p, .section-head p, .explode-copy p, .blog-card p, .review-card p { margin: 0; line-height: 1.7; color: var(--muted); }
+    .floating-pill {
+      top: 14%; left: 0; padding: 12px 16px; font-size: 0.92rem; color: var(--muted); transform: translateX(-6%);
+    }
+    .tooltip {
+      padding: 10px 14px; max-width: 240px; opacity: 0; transform: translateY(8px); transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none; z-index: 10;
+    }
+    .tooltip.show { opacity: 1; transform: translateY(0); }
+
+    .sound-wave {
+      position: absolute; inset: 50% auto auto 50%; width: 240px; height: 240px; transform: translate(-50%, -50%); opacity: 0.82; pointer-events: none;
+    }
+    .sound-wave span {
+      position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(58,160,255,0.2); animation: wave 3.4s linear infinite;
+    }
+    .sound-wave span:nth-child(2) { animation-delay: 1.1s; }
+    .sound-wave span:nth-child(3) { animation-delay: 2.2s; }
+
+    section { padding: 34px 0 88px; }
+    .section-head {
+      display: flex; justify-content: space-between; align-items: end; gap: 18px; margin-bottom: 28px;
+    }
+    .section-head h2 { margin: 0 0 10px; font-size: clamp(2rem, 4vw, 3.6rem); letter-spacing: -0.04em; }
+    .pill {
+      padding: 9px 13px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: var(--muted); white-space: nowrap;
+    }
+
+    .products-grid, .feature-grid, .testimonial-grid, .compare-grid, .review-grid, .blog-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+    }
+    .product-card, .feature-card, .spec-card, .testimonial-card, .buy-card, .gallery-card, .compare-card, .sound-card, .blog-card, .review-card, .assistant-card {
+      padding: 22px; border-radius: var(--radius); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(14px); box-shadow: var(--shadow);
+      transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+    }
+    .product-card:hover, .feature-card:hover, .spec-card:hover, .testimonial-card:hover, .buy-card:hover, .gallery-card:hover, .compare-card:hover, .sound-card:hover, .blog-card:hover, .review-card:hover, .assistant-card:hover {
+      transform: translateY(-6px); border-color: rgba(58,160,255,0.28); background: rgba(255,255,255,0.08);
+    }
+    .product-visual {
+      position: relative; height: 240px; border-radius: 22px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); overflow: hidden; display: grid; place-items: center; margin-bottom: 18px;
+    }
+    .product-glow {
+      position: absolute; width: 170px; height: 170px; border-radius: 50%; background: radial-gradient(circle, rgba(58,160,255,0.2), transparent 68%); filter: blur(16px);
+    }
+    .mini-speaker, .gallery-speaker { position: relative; }
+    .mini-speaker { width: 122px; height: 170px; border-radius: 30px; }
+    .mini-speaker .mini-driver, .mini-speaker .mini-bass, .gallery-speaker .mini-driver, .gallery-speaker .mini-bass {
+      position: absolute; left: 50%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle, #182331 0 30%, #0e151d 31% 58%, #1e2a39 59% 100%); border: 8px solid rgba(255,255,255,0.12);
+    }
+    .mini-speaker .mini-driver, .gallery-speaker .mini-driver { width: 54px; height: 54px; top: 26px; }
+    .mini-speaker .mini-bass, .gallery-speaker .mini-bass { width: 44px; height: 44px; bottom: 22px; border-color: rgba(58,160,255,0.24); }
+    .mini-strap {
+      position: absolute; right: 10px; top: 34px; width: 10px; height: 56px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.08);
+    }
+    .price, .buy-price { font-weight: 800; line-height: 1; }
+    .price { font-size: 1.35rem; margin-top: 12px; }
+    .buy-price { font-size: clamp(2rem, 5vw, 3.6rem); margin: 12px 0; }
+    .muted { color: var(--muted); }
+    .product-tags, .compare-tags { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .tag {
+      padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); font-size: 0.84rem;
+    }
+    .color-switch { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+    .swatch, .color-dot { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.22); box-shadow: 0 0 0 2px rgba(255,255,255,0.04); }
+    .icon {
+      width: 52px; height: 52px; display: grid; place-items: center; border-radius: 18px; margin-bottom: 18px; background: linear-gradient(135deg, rgba(58,160,255,0.24), rgba(11,92,255,0.24)); box-shadow: var(--glow); font-size: 1.15rem;
+    }
+
+    .sound-layout, .buy-layout, .assistant-layout { display: grid; grid-template-columns: 1fr 0.95fr; gap: 20px; }
+    .sound-visual {
+      min-height: 340px; border-radius: 26px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); display: grid; place-items: center; position: relative; overflow: hidden;
+    }
+    .sound-speaker {
+      width: 170px; height: 250px; border-radius: 40px; position: relative; transform: translateY(0) scale(1); transition: transform 0.12s linear;
+    }
+    .sound-driver, .sound-bass {
+      position: absolute; left: 50%; transform: translateX(-50%) scale(var(--soundPulse, 1)); border-radius: 50%; background: radial-gradient(circle, #182331 0 30%, #0e151d 31% 58%, #1e2a39 59% 100%); border: 10px solid rgba(255,255,255,0.12); transition: transform 0.06s linear, border-color 0.1s linear, box-shadow 0.1s linear;
+    }
+    .sound-driver { width: 70px; height: 70px; top: 44px; }
+    .sound-bass { width: 56px; height: 56px; bottom: 34px; border-color: rgba(58,160,255,0.28); }
+    .sound-ring {
+      position: absolute; width: 240px; height: 240px; border-radius: 50%; border: 1px solid rgba(58,160,255,0.18); animation: soundPulse 1.6s linear infinite; opacity: var(--ringOpacity, 0.15); transform: scale(var(--ringScale, 1));
+    }
+    .sound-ring.r2 { animation-delay: 0.55s; }
+    .sound-ring.r3 { animation-delay: 1.1s; }
+    .visualizer-wrap {
+      margin-top: 18px; display: grid; gap: 14px;
+    }
+    .visualizer {
+      height: 120px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); overflow: hidden;
+    }
+    .slider-group { display: grid; gap: 14px; margin-top: 18px; }
+    .slider-group label { display: grid; gap: 8px; color: var(--muted); font-size: 0.94rem; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+    .explode-section { position: relative; min-height: 360vh; padding: 0; }
+    .explode-sticky { position: sticky; top: 0; height: 100vh; display: grid; align-items: center; overflow: hidden; }
+    .explode-layout {
+      width: min(calc(100% - 32px), var(--max)); margin: 0 auto; display: grid; grid-template-columns: 0.84fr 0.96fr 0.9fr; gap: 28px; align-items: center;
+    }
+    .explode-copy h2 { margin: 0 0 14px; font-size: clamp(2.5rem, 5vw, 4.9rem); line-height: 0.94; letter-spacing: -0.05em; }
+    .progress-wrap { margin-top: 24px; display: grid; gap: 12px; }
+    .progress-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; position: relative; }
+    .progress-fill { position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+    .explode-stage { position: relative; height: min(88vh, 760px); display: grid; place-items: center; perspective: 1800px; }
+    .speaker-explode {
+      position: relative; width: 370px; height: 660px; transform-style: preserve-3d; transform: rotateY(calc(var(--progress, 0) * 360deg - 10deg)) rotateX(12deg); transition: transform 0.12s linear;
+    }
+    .speaker-layer {
+      position: absolute; left: 50%; transform: translateX(-50%) translateY(calc(var(--layer-shift, 0px) * var(--progress, 0))) translateZ(calc(var(--layer-z, 0px) * var(--progress, 0))) scale(calc(1 - var(--progress, 0) * 0.02)); box-shadow: var(--shadow); transition: opacity 0.25s ease, filter 0.2s ease, background 0.25s ease;
+    }
+    .speaker-layer.hovered, .speaker-part.hovered { filter: drop-shadow(0 0 18px rgba(58,160,255,0.4)); }
+    .layer-shell {
+      top: 102px; width: 294px; height: 452px; border-radius: 60px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)), linear-gradient(180deg, var(--shell-top), var(--shell-bottom));
+      overflow: hidden; --layer-z: -50px;
+    }
+    .layer-top, .layer-bottom {
+      width: 248px; height: 36px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0.07));
+    }
+    .layer-top { top: 56px; --layer-shift: -180px; --layer-z: 60px; }
+    .layer-bottom { top: 566px; --layer-shift: 180px; --layer-z: 60px; }
+    .layer-tweeter { top: 80px; width: 78px; height: 78px; font-size: 0.7rem; --layer-shift: -310px; --layer-z: 120px; }
+    .layer-driver {
+      top: 138px; width: 180px; height: 180px; border: 14px solid rgba(255,255,255,0.14);
+      background: radial-gradient(circle at 30% 28%, rgba(255,255,255,0.28), rgba(255,255,255,0.02) 34%), radial-gradient(circle, #16202c 0 26%, #0d151e 27% 58%, #1c2735 59% 78%, #0a1118 79% 100%);
+      --layer-shift: -190px; --layer-z: 140px;
+    }
+    .layer-chip { top: 268px; width: 148px; height: 86px; font-size: 0.7rem; --layer-shift: 48px; --layer-z: 120px; }
+    .layer-battery { top: 370px; width: 198px; height: 70px; font-size: 0.76rem; --layer-shift: 190px; --layer-z: 130px; }
+    .layer-radiator {
+      top: 452px; width: 140px; height: 140px; border: 11px solid rgba(58,160,255,0.18);
+      background: radial-gradient(circle, rgba(58,160,255,0.2) 0 18%, #0d151e 19% 58%, #182433 59% 100%);
+      box-shadow: 0 0 36px rgba(58,160,255,0.16); --layer-shift: 320px; --layer-z: 140px;
+    }
+    .layer-strap {
+      top: 170px; right: 12px; width: 18px; height: 120px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.08); --layer-shift: -40px; --layer-z: 90px;
+    }
+    .spec-panel { position: relative; min-height: 600px; }
+    .spec-card {
+      position: absolute; width: min(360px, 100%); opacity: 0.22; transform: translateY(42px) scale(0.96); transition: opacity 0.35s ease, transform 0.35s ease, border-color 0.35s ease;
+    }
+    .spec-card.active { opacity: 1; transform: translateY(0) scale(1); border-color: rgba(58,160,255,0.34); }
+    .spec-card:nth-child(1) { top: 0; right: 0; }
+    .spec-card:nth-child(2) { top: 116px; right: 18px; }
+    .spec-card:nth-child(3) { top: 234px; right: 0; }
+    .spec-card:nth-child(4) { top: 352px; right: 24px; }
+    .spec-card:nth-child(5) { top: 470px; right: 0; }
+    .spec-kicker { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-3); margin-bottom: 10px; }
+
+    .rating { display: flex; align-items: center; gap: 8px; color: var(--muted); margin-top: 12px; flex-wrap: wrap; }
+    .stars { color: #9dd5ff; letter-spacing: 0.15em; }
+    .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+    .gallery-tile {
+      position: relative; min-height: 120px; border-radius: 22px; background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; display: grid; place-items: center;
+    }
+    .gallery-tile.large { grid-column: span 2; min-height: 256px; }
+    .gallery-speaker { width: 138px; height: 190px; border-radius: 34px; transform: rotate(-10deg); }
+    .compare-spec { display: grid; gap: 10px; margin-top: 18px; color: var(--muted); }
+    .compare-row { display: flex; justify-content: space-between; gap: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .color-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    .color-btn {
+      width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16); cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; box-shadow: 0 0 0 2px rgba(255,255,255,0.03);
+    }
+    .color-btn.active, .color-btn:hover {
+      transform: translateY(-2px) scale(1.04); border-color: rgba(255,255,255,0.4); box-shadow: 0 0 0 3px rgba(58,160,255,0.12);
+    }
+
+    .assistant-layout { margin-top: 16px; }
+    .assistant-input {
+      width: 100%; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: var(--text); padding: 14px 16px; border-radius: 16px; outline: none;
+    }
+    .assistant-answer {
+      min-height: 120px; margin-top: 14px; padding: 16px; border-radius: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--muted); line-height: 1.7;
+    }
+
+    .review-avatar {
+      width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: linear-gradient(135deg, rgba(58,160,255,0.35), rgba(11,92,255,0.25)); margin-bottom: 12px;
+    }
+    .blog-meta { color: var(--muted); font-size: 0.88rem; margin-bottom: 10px; }
+
+    .reveal {
+      opacity: 0; transform: translateY(30px) scale(0.985); transition: opacity 0.85s ease, transform 0.85s ease; will-change: transform, opacity;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0) scale(1); }
+    footer { padding: 0 0 44px; color: var(--muted); font-size: 0.95rem; }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(0.94); opacity: 0.62; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+    @keyframes float { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(12px,-18px); } }
+    @keyframes drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-48px, -16px, 0); } }
+    @keyframes wave { 0% { transform: scale(0.7); opacity: 0.45; } 100% { transform: scale(1.5); opacity: 0; } }
+    @keyframes particleFloat { 0% { transform: translateY(0) scale(0.8); opacity: 0; } 10% { opacity: 0.45; } 100% { transform: translateY(-110vh) scale(1.15); opacity: 0; } }
+    @keyframes soundPulse { 0% { transform: scale(0.74); opacity: 0.28; } 100% { transform: scale(1.45); opacity: 0; } }
+
+    
+    @media (max-width: 1180px) {
+      .container { width: min(calc(100% - 24px), var(--max)); }
+      .hero,
+      .sound-layout,
+      .buy-layout,
+      .products-grid,
+      .feature-grid,
+      .testimonial-grid,
+      .compare-grid,
+      .explode-layout,
+      .assistant-layout,
+      .review-grid,
+      .blog-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        min-height: auto;
+        padding-top: 56px;
+        gap: 24px;
+      }
+      .hero-visual {
+        min-height: 520px;
+        order: -1;
+      }
+      .speaker-stage {
+        width: min(100%, 540px);
+      }
+      .hero-card,
+      .floating-pill {
+        max-width: 100%;
+      }
+      .explode-section {
+        min-height: auto;
+        padding: 72px 0 24px;
+      }
+      .explode-sticky {
+        position: relative;
+        height: auto;
+        overflow: visible;
+      }
+      .explode-layout {
+        gap: 24px;
+      }
+      .explode-stage {
+        height: 520px;
+      }
+      .spec-panel {
+        min-height: auto;
+        display: grid;
+        gap: 16px;
+      }
+      .spec-card {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        opacity: 1;
+        transform: none;
+      }
+      .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 820px) {
+      body { cursor: auto; }
+      .cursor-layer { display: none; }
+      .container { width: min(calc(100% - 20px), var(--max)); }
+      .nav-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .nav-links {
+        gap: 12px;
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 42px;
+        gap: 20px;
+      }
+      .hero-visual {
+        min-height: 460px;
+      }
+      .speaker-stage {
+        aspect-ratio: auto;
+        min-height: 420px;
+      }
+      .speaker-assembly,
+      .speaker-explode {
+        transform: none !important;
+      }
+      .hero-card,
+      .floating-pill,
+      .tooltip {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        transform: none;
+        margin-top: 14px;
+      }
+      .actions,
+      .hero-specs,
+      .buy-actions,
+      .sound-controls,
+      .config-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .products-grid,
+      .feature-grid,
+      .testimonial-grid,
+      .compare-grid,
+      .review-grid,
+      .blog-grid,
+      .sound-layout,
+      .buy-layout,
+      .assistant-layout {
+        grid-template-columns: 1fr;
+      }
+      .gallery-grid {
+        grid-template-columns: 1fr;
+      }
+      .gallery-tile.large {
+        grid-column: span 1;
+        min-height: 180px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      :root {
+        --radius: 22px;
+      }
+      h1 {
+        font-size: clamp(2.4rem, 11vw, 3.6rem);
+      }
+      .section-head h2,
+      .explode-copy h2 {
+        font-size: clamp(1.9rem, 8vw, 2.6rem);
+      }
+      .lead,
+      .hero-card p,
+      .feature-card p,
+      .spec-card p,
+      .buy-card p,
+      .gallery-card p,
+      .compare-card p,
+      .sound-card p,
+      .assistant-answer,
+      .blog-card p,
+      .review-card p {
+        font-size: 0.96rem;
+      }
+      .product-card,
+      .feature-card,
+      .spec-card,
+      .testimonial-card,
+      .buy-card,
+      .gallery-card,
+      .compare-card,
+      .sound-card,
+      .blog-card,
+      .review-card,
+      .assistant-card {
+        padding: 18px;
+      }
+      .hero-specs {
+        gap: 14px;
+      }
+      .product-visual {
+        height: 200px;
+      }
+      .speaker-stage {
+        min-height: 380px;
+      }
+      .speaker-assembly {
+        width: 280px;
+        height: 430px;
+      }
+      .part-shell {
+        width: 220px;
+        height: 350px;
+        border-radius: 46px;
+      }
+      .part-topcap,
+      .part-bottomcap {
+        width: 190px;
+      }
+      .part-tweeter {
+        top: 64px;
+        width: 58px;
+        height: 58px;
+      }
+      .part-driver {
+        top: 118px;
+        width: 118px;
+        height: 118px;
+      }
+      .part-chip {
+        top: 188px;
+        width: 112px;
+        height: 68px;
+      }
+      .part-battery {
+        top: 212px;
+        width: 150px;
+        height: 54px;
+      }
+      .part-radiator {
+        top: 270px;
+        width: 100px;
+        height: 100px;
+      }
+      .strap {
+        right: 10px;
+        top: 106px;
+        height: 84px;
+      }
+      .explode-stage {
+        height: 380px;
+      }
+      .speaker-explode {
+        width: 270px;
+        height: 470px;
+      }
+      .layer-shell {
+        top: 76px;
+        width: 220px;
+        height: 330px;
+        border-radius: 46px;
+      }
+      .layer-top,
+      .layer-bottom {
+        width: 184px;
+        height: 30px;
+      }
+      .layer-top { top: 40px; }
+      .layer-bottom { top: 412px; }
+      .layer-tweeter {
+        top: 58px;
+        width: 56px;
+        height: 56px;
+      }
+      .layer-driver {
+        top: 104px;
+        width: 128px;
+        height: 128px;
+      }
+      .layer-chip {
+        top: 198px;
+        width: 110px;
+        height: 64px;
+      }
+      .layer-battery {
+        top: 272px;
+        width: 150px;
+        height: 54px;
+      }
+      .layer-radiator {
+        top: 334px;
+        width: 102px;
+        height: 102px;
+      }
+      .layer-strap {
+        top: 126px;
+        width: 14px;
+        height: 88px;
+      }
+      .sound-visual {
+        min-height: 280px;
+      }
+      .sound-speaker {
+        width: 138px;
+        height: 208px;
+        border-radius: 32px;
+      }
+      .sound-driver {
+        width: 58px;
+        height: 58px;
+      }
+      .sound-bass {
+        width: 48px;
+        height: 48px;
+      }
+      .visualizer {
+        height: 96px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      body { cursor: auto; }
+      .cursor-layer { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-noise"></div>
+  <div class="bg-glow"></div>
+  <div class="bg-vignette"></div>
+  <div class="particle-field" id="particleField"></div>
+  <div class="cursor-layer">
+    <div class="cursor-ring"></div>
+    <div class="cursor-dot"></div>
+  </div>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="brand-logo"></div>
+        <span>CloudBeat Audio</span>
+      </div>
+      <div class="nav-links">
+        <a href="#inicio">Inicio</a>
+        <a href="#productos">Productos</a>
+        <a href="#soundlab">Sound Lab</a>
+        <a href="#explosion">Exploded View</a>
+        <a href="#comparar">Comparar</a>
+        <a href="#asistente">Asistente</a>
+        <a href="#comprar">Comprar</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="container hero" id="inicio">
+      <div class="hero-video"><canvas id="heroVideoCanvas" width="1280" height="720"></canvas></div>
+      <div class="reveal">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> CloudBeat One · demo cinematográfica AMOLED v3</div>
+        <h1>Audio portátil con una <span class="gradient-text">experiencia total</span>.</h1>
+        <p class="lead">
+          Esta versión v3 suma video hero generativo, visualizador de música, cursor glow, partículas, tooltips técnicos, simulador de batería, comparador, reviews, mini asistente de compra y más interacción para que la página se sienta como una marca real de hardware premium.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#explosion">Ver exploded view</a>
+          <a class="btn btn-secondary" href="#soundlab">Probar Sound Lab</a>
+        </div>
+        <div class="hero-specs">
+          <div><strong>30h</strong><span>Batería</span></div>
+          <div><strong>360°</strong><span>Sonido inmersivo</span></div>
+          <div><strong>IPX7</strong><span>Resistente al agua</span></div>
+          <div><strong>BT 5.3</strong><span>Baja latencia</span></div>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal">
+        <div class="speaker-stage">
+          <div class="speaker-glow"></div>
+          <div class="sound-wave"><span></span><span></span><span></span></div>
+          <div class="speaker-shadow"></div>
+          <div class="floating-pill">Diseño demo inspirado en speakers cilíndricos premium</div>
+          <div class="speaker-assembly interactive-spot" id="heroSpeaker">
+            <div class="speaker-part part-topcap"></div>
+            <div class="speaker-part part-shell"></div>
+            <div class="speaker-part part-tweeter" data-tooltip="Tweeter: claridad en agudos y voces.">Hi</div>
+            <div class="speaker-part part-driver" data-tooltip="Driver principal: cuerpo y volumen general.">Driver</div>
+            <div class="speaker-part part-chip" data-tooltip="Chip Bluetooth 5.3: conexión más estable y rápida.">BT 5.3</div>
+            <div class="speaker-part part-battery" data-tooltip="Batería de larga duración con carga USB-C.">30h</div>
+            <div class="speaker-part part-radiator" data-tooltip="Radiador pasivo: graves más potentes.">Bass</div>
+            <div class="speaker-part part-bottomcap"></div>
+            <div class="speaker-part strap" data-tooltip="Correa lateral para transporte rápido."></div>
+          </div>
+          <div class="tooltip" id="heroTooltip"></div>
+        </div>
+        <div class="hero-card">
+          <h3>Modelo demo: CloudBeat One</h3>
+          <p>Preview conceptual lista para incrustar en Google Sites. Ya trae un producto principal visual, interacciones y bloques de venta para validar la experiencia completa.</p>
+          <div class="color-buttons">
+            <button class="color-btn active" data-color="obsidian" style="background:#0b1017" aria-label="Obsidian"></button>
+            <button class="color-btn" data-color="deepblue" style="background:#0f2f56" aria-label="Deep Blue"></button>
+            <button class="color-btn" data-color="electric" style="background:#0b5cff" aria-label="Electric Blue"></button>
+            <button class="color-btn" data-color="silver" style="background:#8594a8" aria-label="Silver Ice"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="container" id="productos">
+      <div class="section-head reveal">
+        <div>
+          <h2>Modelos destacados</h2>
+          <p>La tienda ya se ve como una colección real de hardware. Dejé una línea completa con el producto demo principal y variantes preparadas para crecer.</p>
+        </div>
+        <div class="pill">CloudBeat Collection</div>
+      </div>
+      <div class="products-grid">
+        <article class="product-card reveal">
+          <div class="product-visual">
+            <div class="product-glow"></div>
+            <div class="mini-speaker">
+              <div class="mini-driver"></div><div class="mini-bass"></div><div class="mini-strap"></div>
+            </div>
+          </div>
+          <h3>CloudBeat One</h3>
+          <p class="muted">Producto estrella de la demo. Portátil, resistente y con un perfil sonoro más contundente para diario.</p>
+          <div class="price">$2,499 MXN</div>
+          <div class="product-tags"><span class="tag">Bluetooth 5.3</span><span class="tag">30h batería</span><span class="tag">IPX7</span></div>
+          <div class="color-switch"><span class="muted">Colores:</span><span class="swatch" style="background:#0b1017"></span><span class="swatch" style="background:#12355f"></span><span class="swatch" style="background:#0b5cff"></span></div>
+        </article>
+        <article class="product-card reveal">
+          <div class="product-visual">
+            <div class="product-glow"></div>
+            <div class="mini-speaker" style="transform:scale(0.94);">
+              <div class="mini-driver"></div><div class="mini-bass"></div><div class="mini-strap"></div>
+            </div>
+          </div>
+          <h3>CloudBeat Move</h3>
+          <p class="muted">Compacto, ligero y pensado para mochila. Ideal para ciudad, estudio o viajes cortos.</p>
+          <div class="price">$1,899 MXN</div>
+          <div class="product-tags"><span class="tag">Compacto</span><span class="tag">USB-C</span><span class="tag">Stereo pair</span></div>
+          <div class="color-switch"><span class="muted">Colores:</span><span class="swatch" style="background:#05080d"></span><span class="swatch" style="background:#062340"></span><span class="swatch" style="background:#3aa0ff"></span></div>
+        </article>
+        <article class="product-card reveal">
+          <div class="product-visual">
+            <div class="product-glow"></div>
+            <div class="mini-speaker" style="transform:scale(1.08);">
+              <div class="mini-driver"></div><div class="mini-bass"></div><div class="mini-strap"></div>
+            </div>
+          </div>
+          <h3>CloudBeat Max</h3>
+          <p class="muted">Mayor presencia, más volumen y una puesta en escena más potente para exteriores o reuniones.</p>
+          <div class="price">$3,699 MXN</div>
+          <div class="product-tags"><span class="tag">80W</span><span class="tag">Party mode</span><span class="tag">Deep bass</span></div>
+          <div class="color-switch"><span class="muted">Colores:</span><span class="swatch" style="background:#03060a"></span><span class="swatch" style="background:#0a1d36"></span><span class="swatch" style="background:#6ea2ff"></span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="container" id="soundlab">
+      <div class="section-head reveal">
+        <div>
+          <h2>Sound Lab interactivo</h2>
+          <p>Ahora puedes probar una simulación visual del bass, treble y volumen. Además incluye visualizador musical y simulador de batería.</p>
+        </div>
+        <div class="pill">Bass · Treble · Volume · Battery</div>
+      </div>
+      <div class="sound-layout">
+        <article class="sound-card reveal">
+          <h3>Controla la respuesta visual</h3>
+          <p>Ajusta la energía del altavoz y mira cómo vibra el driver, crecen las ondas y cambia la intensidad visual del sistema.</p>
+          <div class="sound-controls" style="margin-top:18px;">
+            <button class="btn btn-primary" id="playSoundDemo">Play sound test</button>
+            <button class="btn btn-secondary" id="stopSoundDemo">Stop</button>
+          </div>
+          <div class="slider-group">
+            <label>Bass<input type="range" id="bassRange" min="0" max="100" value="72" /></label>
+            <label>Treble<input type="range" id="trebleRange" min="0" max="100" value="58" /></label>
+            <label>Volume<input type="range" id="volumeRange" min="0" max="100" value="68" /></label>
+            <label>Modo batería<select class="btn btn-secondary" id="batteryMode">
+              <option value="eco">Eco · 30h</option>
+              <option value="normal" selected>Normal · 24h</option>
+              <option value="party">Party · 12h</option>
+            </select></label>
+          </div>
+          <div class="visualizer-wrap">
+            <canvas class="visualizer" id="visualizerCanvas" width="560" height="120"></canvas>
+            <div class="muted" id="batteryText">Autonomía estimada: 24 horas</div>
+          </div>
+        </article>
+        <article class="sound-card reveal">
+          <div class="sound-visual" id="soundVisual">
+            <div class="sound-ring"></div><div class="sound-ring r2"></div><div class="sound-ring r3"></div>
+            <div class="sound-speaker" id="soundSpeaker"><div class="sound-driver"></div><div class="sound-bass"></div></div>
+          </div>
+          <p class="muted" style="margin-top:16px;">Esta demo sirve como previsualización de una futura sección con audio real o video del producto.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="container" id="tecnologia">
+      <div class="section-head reveal">
+        <div>
+          <h2>Qué cambió en esta versión</h2>
+          <p>Sumé una capa más completa de interacción y contenido para que la página funcione mejor como tienda, como demo de hardware y como pieza de marketing.</p>
+        </div>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card reveal"><div class="icon">◌</div><h3>Hero generativo</h3><p>Ahora el inicio tiene un fondo animado tipo video para dar sensación de keynote premium.</p></article>
+        <article class="feature-card reveal"><div class="icon">✦</div><h3>Tooltips técnicos</h3><p>Las piezas del speaker ya muestran información contextual al pasar el mouse.</p></article>
+        <article class="feature-card reveal"><div class="icon">⚡</div><h3>Más conversión</h3><p>Se añadieron reviews, blog, asistente de compra y opciones de envío para acercarse a una tienda real.</p></article>
+      </div>
+    </section>
+
+    <section class="explode-section" id="explosion">
+      <div class="explode-sticky">
+        <div class="explode-layout">
+          <div class="explode-copy">
+            <div class="eyebrow"><span class="eyebrow-dot"></span> Scroll interactivo de producto</div>
+            <h2>Desmonta y explora CloudBeat One.</h2>
+            <p>Aquí está la secuencia más importante. Conforme haces scroll, el altavoz gira 360°, se separa por capas y te revela exactamente qué hace cada pieza dentro de la experiencia sonora.</p>
+            <div class="progress-wrap">
+              <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+              <div class="muted" id="progressLabel">Explosión 0%</div>
+            </div>
+          </div>
+
+          <div class="explode-stage">
+            <div class="speaker-explode interactive-spot" id="speakerExplode" style="--progress:0;">
+              <div class="speaker-layer layer-top" data-tooltip="Tapa superior: protección y terminación del chasis."></div>
+              <div class="speaker-layer layer-tweeter" data-tooltip="Tweeter: da brillo y detalle a los agudos.">Tweeter</div>
+              <div class="speaker-layer layer-driver" data-tooltip="Driver principal: el corazón del sonido.">Driver</div>
+              <div class="speaker-layer layer-shell" data-tooltip="Cuerpo con textura: rigidez, acústica y look premium."></div>
+              <div class="speaker-layer layer-chip" data-tooltip="Chip BT: emparejamiento rápido, mejor estabilidad.">Chip BT</div>
+              <div class="speaker-layer layer-battery" data-tooltip="Batería: autonomía para sesiones largas.">Batería</div>
+              <div class="speaker-layer layer-radiator" data-tooltip="Radiador pasivo: refuerzo real del bass.">Bass</div>
+              <div class="speaker-layer layer-bottom" data-tooltip="Base inferior: apoyo y sellado."></div>
+              <div class="speaker-layer layer-strap" data-tooltip="Correa lateral desmontable."></div>
+            </div>
+            <div class="tooltip" id="explodeTooltip"></div>
+          </div>
+
+          <div class="spec-panel">
+            <article class="spec-card active" data-step="0"><div class="spec-kicker">01 / Agudos</div><h3>Tweeter de precisión</h3><p>Da claridad a voces y detalles finos. Mejora la nitidez percibida en podcasts, acústicos y mezcla general.</p></article>
+            <article class="spec-card" data-step="1"><div class="spec-kicker">02 / Núcleo sonoro</div><h3>Driver de rango completo</h3><p>Es el corazón del altavoz. Controla gran parte del cuerpo, volumen y carácter general del sonido.</p></article>
+            <article class="spec-card" data-step="2"><div class="spec-kicker">03 / Conectividad</div><h3>Chip Bluetooth 5.3</h3><p>Reduce latencia, mejora estabilidad y acelera la vinculación con teléfonos, tablets y laptops.</p></article>
+            <article class="spec-card" data-step="3"><div class="spec-kicker">04 / Energía</div><h3>Batería de larga duración</h3><p>Autonomía pensada para todo el día con gestión más eficiente de consumo y carga USB-C moderna.</p></article>
+            <article class="spec-card" data-step="4"><div class="spec-kicker">05 / Graves</div><h3>Radiador pasivo</h3><p>Potencia el bass sin agrandar demasiado el cuerpo, logrando un perfil grave más contundente en formato portátil.</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="container" id="comparar">
+      <div class="section-head reveal">
+        <div>
+          <h2>Comparador de modelos</h2>
+          <p>Una sección muy útil para tienda online: permite ver diferencias clave entre toda la familia CloudBeat sin salir de la landing.</p>
+        </div>
+        <div class="pill">One · Move · Max</div>
+      </div>
+      <div class="compare-grid">
+        <article class="compare-card reveal"><h3>CloudBeat One</h3><p>Balance general y mejor look premium para home + movilidad.</p><div class="compare-tags"><span class="tag">Recomendado</span></div><div class="compare-spec"><div class="compare-row"><span>Potencia</span><strong>40W</strong></div><div class="compare-row"><span>Batería</span><strong>30h</strong></div><div class="compare-row"><span>Peso</span><strong>620g</strong></div><div class="compare-row"><span>Perfil</span><strong>Balanceado</strong></div></div></article>
+        <article class="compare-card reveal"><h3>CloudBeat Move</h3><p>Más pequeño, más ligero, pensado para mochila y trayectos cortos.</p><div class="compare-spec"><div class="compare-row"><span>Potencia</span><strong>28W</strong></div><div class="compare-row"><span>Batería</span><strong>24h</strong></div><div class="compare-row"><span>Peso</span><strong>480g</strong></div><div class="compare-row"><span>Perfil</span><strong>Compacto</strong></div></div></article>
+        <article class="compare-card reveal"><h3>CloudBeat Max</h3><p>Más grande, más presión sonora y mejor pegada para exterior o reuniones.</p><div class="compare-spec"><div class="compare-row"><span>Potencia</span><strong>80W</strong></div><div class="compare-row"><span>Batería</span><strong>36h</strong></div><div class="compare-row"><span>Peso</span><strong>980g</strong></div><div class="compare-row"><span>Perfil</span><strong>Impactante</strong></div></div></article>
+      </div>
+    </section>
+
+    <section class="container" id="asistente">
+      <div class="section-head reveal">
+        <div>
+          <h2>Asistente de compra</h2>
+          <p>Una demo simple de recomendación para ayudar al usuario a elegir un modelo según el uso que describa.</p>
+        </div>
+        <div class="pill">Demo IA local</div>
+      </div>
+      <div class="assistant-layout">
+        <article class="assistant-card reveal">
+          <h3>Describe lo que buscas</h3>
+          <input class="assistant-input" id="assistantInput" placeholder="Ejemplo: quiero algo pequeño para llevar al parque" />
+          <button class="btn btn-primary" id="assistantButton" style="margin-top:14px;">Recomendar modelo</button>
+          <div class="assistant-answer" id="assistantAnswer">Escribe tu necesidad y te recomendaré un modelo demo de CloudBeat.</div>
+        </article>
+        <article class="assistant-card reveal">
+          <h3>Calculador de envío demo</h3>
+          <p class="muted">Ingresa un código postal de ejemplo para una estimación rápida visual.</p>
+          <input class="assistant-input" id="shippingInput" placeholder="Ejemplo: 01000" style="margin-top:14px;" />
+          <button class="btn btn-secondary" id="shippingButton" style="margin-top:14px;">Calcular envío</button>
+          <div class="assistant-answer" id="shippingAnswer">El envío estimado aparecerá aquí.</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="container" id="comprar">
+      <div class="section-head reveal">
+        <div>
+          <h2>Compra demo</h2>
+          <p>Esta ficha ya parece una PDP ligera de e-commerce. Luego puedes conectar Stripe, carrito real, WhatsApp o links de pago externos.</p>
+        </div>
+        <div class="pill">Checkout ready</div>
+      </div>
+      <div class="buy-layout">
+        <article class="buy-card reveal">
+          <h3>CloudBeat One</h3>
+          <p>Altavoz Bluetooth cilíndrico con look premium, textura de malla, correa lateral y bass reforzado para una demo de tienda moderna.</p>
+          <div class="buy-price">$2,499 MXN</div>
+          <div class="rating"><span class="stars">★★★★★</span><span>4.8 · 182 reseñas</span></div>
+          <div class="config-row" style="margin-top:20px;">
+            <div>
+              <div class="muted" style="margin-bottom:8px;">Color</div>
+              <select class="btn btn-secondary" id="productColorSelect" style="padding-right:36px;">
+                <option value="obsidian">Obsidian Black</option>
+                <option value="deepblue">Deep Blue</option>
+                <option value="electric">Electric Blue</option>
+                <option value="silver">Silver Ice</option>
+              </select>
+            </div>
+            <div>
+              <div class="muted" style="margin-bottom:8px;">Accesorio</div>
+              <select class="btn btn-secondary" style="padding-right:36px;">
+                <option>Sin accesorio</option>
+                <option>Case rígido</option>
+                <option>Base de carga</option>
+                <option>Correa premium</option>
+              </select>
+            </div>
+          </div>
+          <div class="product-tags"><span class="tag">Envío 24h</span><span class="tag">Garantía 12 meses</span><span class="tag">Bluetooth 5.3</span></div>
+          <div class="buy-actions" style="margin-top:20px;">
+            <a class="btn btn-primary" href="#">Comprar ahora</a>
+            <a class="btn btn-secondary" href="#">Añadir al carrito</a>
+            <a class="btn btn-secondary" href="#">Comprar por WhatsApp</a>
+          </div>
+        </article>
+        <article class="gallery-card reveal">
+          <h3>Galería conceptual</h3>
+          <p>Previsualización del producto en diferentes ángulos y tarjetas, útil para ver si el estilo ya convence antes de cargar renders o fotos reales.</p>
+          <div class="gallery-grid">
+            <div class="gallery-tile large"><div class="gallery-speaker"><div class="mini-driver"></div><div class="mini-bass"></div><div class="mini-strap"></div></div></div>
+            <div class="gallery-tile"><div class="mini-speaker" style="transform:scale(0.82) rotate(-8deg);"><div class="mini-driver"></div><div class="mini-bass"></div><div class="mini-strap"></div></div></div>
+            <div class="gallery-tile"><div class="mini-speaker" style="transform:scale(0.82) rotate(8deg);"><div class="mini-driver"></div><div class="mini-bass"></div><div class="mini-strap"></div></div></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="section-head reveal">
+        <div>
+          <h2>Reviews y comunidad</h2>
+          <p>Esta capa ayuda a que el sitio se sienta más real y más confiable para conversión.</p>
+        </div>
+        <div class="pill">#CloudBeat</div>
+      </div>
+      <div class="review-grid">
+        <article class="review-card reveal"><div class="review-avatar">AL</div><h3>Alejandra</h3><p>“El bass se siente sorprendentemente profundo para el tamaño. Muy práctico para escritorio y salidas.”</p></article>
+        <article class="review-card reveal"><div class="review-avatar">MR</div><h3>Marco</h3><p>“La demo del sitio explica tan bien los componentes que ya parece una marca lista para lanzar.”</p></article>
+        <article class="review-card reveal"><div class="review-avatar">SV</div><h3>Sofía</h3><p>“Me gustó el comparador y el selector de color. Hace mucho más fácil imaginar el producto final.”</p></article>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="section-head reveal">
+        <div>
+          <h2>Contenido editorial</h2>
+          <p>Una mini sección blog ayuda a posicionar la marca y educar al usuario antes de comprar.</p>
+        </div>
+      </div>
+      <div class="blog-grid">
+        <article class="blog-card reveal"><div class="blog-meta">Guía · Audio portátil</div><h3>Cómo elegir un altavoz Bluetooth</h3><p>Qué revisar en potencia, batería, protección IP y conectividad antes de decidir.</p></article>
+        <article class="blog-card reveal"><div class="blog-meta">Comparativa</div><h3>CloudBeat One vs Move</h3><p>Cuándo conviene un modelo más compacto y cuándo vale más la pena un perfil balanceado.</p></article>
+        <article class="blog-card reveal"><div class="blog-meta">Consejos</div><h3>Cómo cuidar la batería</h3><p>Buenas prácticas para mantener mejor autonomía y extender la vida útil del producto.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">CloudBeat Audio · demo conceptual avanzada v3 optimizada para incrustarse en Google Sites como landing de hardware premium.</div>
+  </footer>
+
+  <script>
+    const COLOR_THEMES = {
+      obsidian: { top: '#1a2433', bottom: '#0a1119', mesh: 'rgba(255,255,255,0.04)' },
+      deepblue: { top: '#18304d', bottom: '#0b1724', mesh: 'rgba(134,210,255,0.05)' },
+      electric: { top: '#2050b8', bottom: '#0b1737', mesh: 'rgba(255,255,255,0.05)' },
+      silver: { top: '#7f8ea4', bottom: '#465466', mesh: 'rgba(255,255,255,0.07)' }
+    };
+
+    const revealItems = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.14, rootMargin: '0px 0px -40px 0px' });
+    revealItems.forEach((item, index) => {
+      item.style.transitionDelay = `${Math.min(index * 70, 280)}ms`;
+      revealObserver.observe(item);
+    });
+
+    const particleField = document.getElementById('particleField');
+    if (particleField) {
+      for (let i = 0; i < 36; i++) {
+        const p = document.createElement('span');
+        p.className = 'particle';
+        p.style.left = `${Math.random() * 100}%`;
+        p.style.top = `${60 + Math.random() * 40}%`;
+        p.style.setProperty('--dur', `${10 + Math.random() * 14}s`);
+        p.style.setProperty('--delay', `${Math.random() * 12}s`);
+        p.style.transform = `scale(${0.6 + Math.random() * 1})`;
+        particleField.appendChild(p);
+      }
+    }
+
+    // Cursor glow
+    window.addEventListener('mousemove', (e) => {
+      document.documentElement.style.setProperty('--cursor-x', `${e.clientX}px`);
+      document.documentElement.style.setProperty('--cursor-y', `${e.clientY}px`);
+      document.documentElement.style.setProperty('--cursor-opacity', '1');
+    });
+    document.querySelectorAll('a, button, input, select, .interactive-spot, .speaker-layer, .speaker-part').forEach((el) => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+      el.addEventListener('mousedown', () => document.body.classList.add('cursor-active'));
+      el.addEventListener('mouseup', () => document.body.classList.remove('cursor-active'));
+    });
+
+    const heroSpeaker = document.getElementById('heroSpeaker');
+    if (heroSpeaker && window.matchMedia('(pointer:fine)').matches) {
+      heroSpeaker.addEventListener('mousemove', (e) => {
+        const rect = heroSpeaker.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        const rotateY = -10 + (x - 0.5) * 14;
+        const rotateX = 10 - (y - 0.5) * 12;
+        heroSpeaker.style.transform = `rotate(${rotateY * -0.28}deg) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+      });
+      heroSpeaker.addEventListener('mouseleave', () => {
+        heroSpeaker.style.transform = 'rotate(-10deg) rotateX(10deg)';
+      });
+    }
+
+    function applyTheme(themeName) {
+      const theme = COLOR_THEMES[themeName] || COLOR_THEMES.obsidian;
+      document.documentElement.style.setProperty('--shell-top', theme.top);
+      document.documentElement.style.setProperty('--shell-bottom', theme.bottom);
+      document.documentElement.style.setProperty('--mesh-line', theme.mesh);
+      document.querySelectorAll('.color-btn').forEach((btn) => btn.classList.toggle('active', btn.dataset.color === themeName));
+      const select = document.getElementById('productColorSelect');
+      if (select && select.value !== themeName) select.value = themeName;
+    }
+    document.querySelectorAll('.color-btn').forEach((btn) => btn.addEventListener('click', () => applyTheme(btn.dataset.color)));
+    const productColorSelect = document.getElementById('productColorSelect');
+    if (productColorSelect) productColorSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+    applyTheme('obsidian');
+
+    // Hero generative video canvas
+    const heroCanvas = document.getElementById('heroVideoCanvas');
+    if (heroCanvas) {
+      const ctx = heroCanvas.getContext('2d');
+      let t = 0;
+      function renderHeroCanvas() {
+        const w = heroCanvas.width;
+        const h = heroCanvas.height;
+        ctx.clearRect(0, 0, w, h);
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, 'rgba(11,92,255,0.38)');
+        grad.addColorStop(1, 'rgba(58,160,255,0.08)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        for (let i = 0; i < 7; i++) {
+          const x = w * 0.5 + Math.sin(t * 0.012 + i * 0.45) * (110 + i * 24);
+          const y = h * 0.5 + Math.cos(t * 0.01 + i * 0.6) * (50 + i * 16);
+          const r = 120 + i * 18 + Math.sin(t * 0.015 + i) * 8;
+          const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+          rg.addColorStop(0, 'rgba(134,210,255,0.11)');
+          rg.addColorStop(1, 'rgba(134,210,255,0)');
+          ctx.fillStyle = rg;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.strokeStyle = 'rgba(134,210,255,0.18)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          const offset = i * 30;
+          for (let x = 0; x < w; x += 6) {
+            const y = h * 0.45 + Math.sin((x + t * 2 + offset) * 0.015) * (18 + i * 3);
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        t += 1;
+        requestAnimationFrame(renderHeroCanvas);
+      }
+      renderHeroCanvas();
+    }
+
+    // Tooltips
+    function bindTooltip(containerId, tooltipId) {
+      const container = document.getElementById(containerId);
+      const tooltip = document.getElementById(tooltipId);
+      if (!container || !tooltip) return;
+      container.querySelectorAll('[data-tooltip]').forEach((el) => {
+        el.addEventListener('mouseenter', () => {
+          tooltip.textContent = el.dataset.tooltip;
+          tooltip.classList.add('show');
+          el.classList.add('hovered');
+        });
+        el.addEventListener('mousemove', (e) => {
+          const rect = container.getBoundingClientRect();
+          tooltip.style.left = `${e.clientX - rect.left + 18}px`;
+          tooltip.style.top = `${e.clientY - rect.top - 12}px`;
+        });
+        el.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('show');
+          el.classList.remove('hovered');
+        });
+      });
+    }
+    bindTooltip('heroSpeaker', 'heroTooltip');
+    bindTooltip('speakerExplode', 'explodeTooltip');
+
+    const bassRange = document.getElementById('bassRange');
+    const trebleRange = document.getElementById('trebleRange');
+    const volumeRange = document.getElementById('volumeRange');
+    const soundSpeaker = document.getElementById('soundSpeaker');
+    const soundVisual = document.getElementById('soundVisual');
+    const batteryMode = document.getElementById('batteryMode');
+    const batteryText = document.getElementById('batteryText');
+    const visualizerCanvas = document.getElementById('visualizerCanvas');
+    const vctx = visualizerCanvas ? visualizerCanvas.getContext('2d') : null;
+    let soundInterval = null;
+    let visualizerTick = 0;
+    let visualizerRunning = true;
+
+    function updateBattery() {
+      const map = { eco: 'Autonomía estimada: 30 horas', normal: 'Autonomía estimada: 24 horas', party: 'Autonomía estimada: 12 horas' };
+      if (batteryText) batteryText.textContent = map[batteryMode.value] || map.normal;
+    }
+
+    function updateSoundVisual() {
+      const bass = Number(bassRange?.value || 70);
+      const treble = Number(trebleRange?.value || 50);
+      const volume = Number(volumeRange?.value || 65);
+      const pulse = 1 + ((bass * 0.0025) + (volume * 0.0016));
+      const lift = -((bass * 0.02) + (volume * 0.01));
+      const brightness = 0.12 + treble / 450;
+      if (soundSpeaker) {
+        soundSpeaker.style.setProperty('--soundPulse', pulse.toFixed(3));
+        soundSpeaker.style.transform = `translateY(${lift}px) scale(${1 + volume * 0.001})`;
+        soundSpeaker.style.boxShadow = `0 20px 40px rgba(0,0,0,0.35), 0 0 ${24 + bass * 0.2}px rgba(58,160,255,${brightness})`;
+      }
+      if (soundVisual) {
+        soundVisual.style.setProperty('--ringOpacity', (0.14 + volume / 300).toFixed(2));
+        soundVisual.style.setProperty('--ringScale', (1 + bass / 300).toFixed(2));
+      }
+      document.documentElement.style.setProperty('--hero-video-opacity', (0.12 + volume / 500).toFixed(2));
+    }
+
+    function renderVisualizer() {
+      if (!vctx || !visualizerCanvas) return;
+      const w = visualizerCanvas.width;
+      const h = visualizerCanvas.height;
+      vctx.clearRect(0, 0, w, h);
+      const bars = 56;
+      const bass = Number(bassRange?.value || 70);
+      const treble = Number(trebleRange?.value || 50);
+      const volume = Number(volumeRange?.value || 65);
+      const barW = w / bars;
+      for (let i = 0; i < bars; i++) {
+        const amp = (Math.sin(visualizerTick * 0.08 + i * 0.32) + 1) * 0.5;
+        const shaped = amp * (volume * 0.7 + bass * (i < bars * 0.35 ? 0.9 : 0.2) + treble * (i > bars * 0.6 ? 0.6 : 0.2));
+        const height = Math.max(8, shaped * 0.85);
+        const x = i * barW + 2;
+        const y = h - height;
+        const grad = vctx.createLinearGradient(0, y, 0, h);
+        grad.addColorStop(0, 'rgba(134,210,255,0.95)');
+        grad.addColorStop(1, 'rgba(11,92,255,0.35)');
+        vctx.fillStyle = grad;
+        vctx.fillRect(x, y, Math.max(4, barW - 4), height);
+      }
+      visualizerTick += visualizerRunning ? 1 : 0.2;
+      requestAnimationFrame(renderVisualizer);
+    }
+    renderVisualizer();
+
+    function startSoundDemo() {
+      visualizerRunning = true;
+      if (soundInterval) clearInterval(soundInterval);
+      soundInterval = setInterval(() => {
+        const bass = Number(bassRange?.value || 70);
+        const volume = Number(volumeRange?.value || 65);
+        const bassDelta = (Math.sin(Date.now() / 120) + 1) * (bass / 130);
+        const volumeDelta = (Math.sin(Date.now() / 200) + 1) * (volume / 180);
+        if (soundSpeaker) {
+          soundSpeaker.style.setProperty('--soundPulse', (1 + bassDelta * 0.08 + volumeDelta * 0.05).toFixed(3));
+          soundSpeaker.style.transform = `translateY(${-8 - bassDelta * 2.8}px) scale(${1 + volumeDelta * 0.02})`;
+        }
+      }, 60);
+    }
+    function stopSoundDemo() {
+      if (soundInterval) clearInterval(soundInterval);
+      soundInterval = null;
+      visualizerRunning = false;
+      updateSoundVisual();
+    }
+
+    [bassRange, trebleRange, volumeRange].forEach((el) => el && el.addEventListener('input', updateSoundVisual));
+    batteryMode?.addEventListener('change', updateBattery);
+    document.getElementById('playSoundDemo')?.addEventListener('click', startSoundDemo);
+    document.getElementById('stopSoundDemo')?.addEventListener('click', stopSoundDemo);
+    updateBattery();
+    updateSoundVisual();
+
+    const explodeSection = document.querySelector('.explode-section');
+    const speakerExplode = document.getElementById('speakerExplode');
+    const specCards = [...document.querySelectorAll('.spec-card')];
+    const progressFill = document.getElementById('progressFill');
+    const progressLabel = document.getElementById('progressLabel');
+    function updateExplodeScroll() {
+      if (!explodeSection || !speakerExplode) return;
+      const rect = explodeSection.getBoundingClientRect();
+      const total = Math.max(explodeSection.offsetHeight - window.innerHeight, 1);
+      const rawProgress = Math.min(Math.max(-rect.top / total, 0), 1);
+      speakerExplode.style.setProperty('--progress', rawProgress.toFixed(4));
+      const stepIndex = Math.min(specCards.length - 1, Math.floor(rawProgress * specCards.length));
+      specCards.forEach((card, index) => card.classList.toggle('active', index === stepIndex));
+      if (progressFill) progressFill.style.width = `${rawProgress * 100}%`;
+      if (progressLabel) progressLabel.textContent = `Explosión ${Math.round(rawProgress * 100)}%`;
+    }
+    updateExplodeScroll();
+    window.addEventListener('scroll', updateExplodeScroll, { passive: true });
+    window.addEventListener('resize', updateExplodeScroll);
+
+    // Assistant demo
+    const assistantInput = document.getElementById('assistantInput');
+    const assistantAnswer = document.getElementById('assistantAnswer');
+    document.getElementById('assistantButton')?.addEventListener('click', () => {
+      const q = (assistantInput.value || '').toLowerCase();
+      if (!q.trim()) {
+        assistantAnswer.textContent = 'Describe un uso como viaje, oficina, fiesta, exterior o algo compacto.';
+        return;
+      }
+      if (q.includes('fiesta') || q.includes('exterior') || q.includes('potente') || q.includes('volumen')) {
+        assistantAnswer.textContent = 'Te recomendaría CloudBeat Max: más potencia, más presión sonora y mejor desempeño para reuniones o espacios abiertos.';
+      } else if (q.includes('peque') || q.includes('mochila') || q.includes('viaje') || q.includes('parque')) {
+        assistantAnswer.textContent = 'Te recomendaría CloudBeat Move: es el más compacto y ligero, ideal para cargarlo a todos lados.';
+      } else {
+        assistantAnswer.textContent = 'Te recomendaría CloudBeat One: es el balance más completo entre tamaño, batería, diseño y calidad percibida.';
+      }
+    });
+
+    const shippingInput = document.getElementById('shippingInput');
+    const shippingAnswer = document.getElementById('shippingAnswer');
+    document.getElementById('shippingButton')?.addEventListener('click', () => {
+      const cp = (shippingInput.value || '').trim();
+      if (!cp) {
+        shippingAnswer.textContent = 'Ingresa un código postal demo para estimar envío.';
+        return;
+      }
+      const fast = Number(cp.slice(-1)) % 2 === 0;
+      shippingAnswer.textContent = fast
+        ? `Envío estimado a ${cp}: 1 a 2 días hábiles · costo demo $99 MXN.`
+        : `Envío estimado a ${cp}: 2 a 4 días hábiles · costo demo $129 MXN.`;
+    });
+  </script>
+</body>
+</html>
+=======
 <body style="background:black;color:white;font-family:sans-serif;text-align:center;margin-top:120px">
 
 <h1>CloudBeat Audio</h1>
@@ -13,3 +1444,5 @@
 
 </body>
 </html>
+
+>>>>>>> 87b4dd28e2260b8abbda115e29ba9f7e8229d7e7

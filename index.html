@@ -28,6 +28,7 @@
       --cursor-size: 18px;
       --cursor-opacity: 0;
       --hero-video-opacity: 0.22;
+    }
 
 
     * { box-sizing: border-box; }
@@ -152,6 +153,16 @@
     .nav-links { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); align-items: center; justify-content: flex-end; }
     .nav-links a { transition: color 0.25s ease; }
     .nav-links a:hover { color: var(--text); }
+
+    .nav-links a:focus-visible,
+    .btn:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid rgba(134,210,255,0.85);
+      outline-offset: 3px;
+    }
+
+    ::selection { background: rgba(58,160,255,0.35); color: #fff; }
 
     .hero {
       min-height: 100vh;
@@ -489,6 +500,20 @@
     @keyframes soundPulse { 0% { transform: scale(0.74); opacity: 0.28; } 100% { transform: scale(1.45); opacity: 0; } }
 
     
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      body { cursor: auto; }
+      .cursor-layer { display: none; }
+    }
+
     @media (max-width: 1180px) {
       .container { width: min(calc(100% - 24px), var(--max)); }
       .hero,
@@ -1435,13 +1460,4 @@
   </script>
 </body>
 </html>
-=======
-<body style="background:black;color:white;font-family:sans-serif;text-align:center;margin-top:120px">
 
-<h1>CloudBeat Audio</h1>
-<p>La página ya funciona 🚀</p>
-
-</body>
-</html>
-
->>>>>>> 87b4dd28e2260b8abbda115e29ba9f7e8229d7e7
